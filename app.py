@@ -1,14 +1,14 @@
 # app.py
 
-from flask import Flask, request, jsonify, render_template
-import pickle
+from flask import Flask, request, render_template
 import numpy as np
+import joblib
 
 # Load the trained model
 model_path = 'model.pkl'
-with open(model_path, 'rb') as file:
-    model = pickle.load(file)
+model = joblib.load(model_path)
 
+# Initialize Flask app
 app = Flask(__name__)
 
 @app.route('/')
@@ -17,15 +17,24 @@ def home():
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    # Extract data from form
-    int_features = [int(x) for x in request.form.values()]
-    final_features = [np.array(int_features)]
-    
-    # Make prediction
-    prediction = model.predict(final_features)
-    output = 'Placed' if prediction[0] == 1 else 'Not Placed'
+    try:
+        # Get form input values
+        cgpa = float(request.form.get('cgpa', 0))
+        iq = float(request.form.get('iq', 0))
 
-    return render_template('index.html', prediction_text='Prediction: {}'.format(output))
+        # Combine features into numpy array
+        features = np.array([[cgpa, iq]])
+
+        # Make prediction
+        prediction = model.predict(features)[0]
+
+        # Map prediction to label
+        result = 'Placed ' if prediction == 1 else 'Not Placed '
+
+        return render_template('index.html', prediction_text=f'Prediction: {result}')
+
+    except Exception as e:
+        return render_template('index.html', prediction_text=f'Error: {str(e)}')
 
 if __name__ == "__main__":
     app.run(debug=True)
